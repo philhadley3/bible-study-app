@@ -44,6 +44,47 @@ export default function Home() {
     if (!notesKey) return;
     localStorage.setItem(notesKey, notes);
   }, [notesKey, notes]);
+function sortAnchoredNotes(raw: string, ch: number) {
+  // Split into lines but keep original paragraphs
+  const text = raw ?? "";
+  if (!text.trim()) return text;
+
+  // Match anchors like "3:12", "3:12 —", "3:12:", "3:12 -"
+  const anchorRe = new RegExp(`^\\s*${ch}:(\\d{1,3})\\s*(?:[—\\-:]\\s*)?.*$`);
+
+  const lines = text.split("\n");
+
+  // Find anchor line indices
+  const anchorIdxs: { i: number; v: number }[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(anchorRe);
+    if (m) anchorIdxs.push({ i, v: Number(m[1]) });
+  }
+
+  // If no anchors, nothing to sort
+  if (anchorIdxs.length === 0) return text;
+
+  // Build blocks: (anchor line + following lines until next anchor)
+  const blocks: { verse: number; content: string }[] = [];
+  for (let k = 0; k < anchorIdxs.length; k++) {
+    const start = anchorIdxs[k].i;
+    const end = k + 1 < anchorIdxs.length ? anchorIdxs[k + 1].i : lines.length;
+    const verse = anchorIdxs[k].v;
+    const content = lines.slice(start, end).join("\n").trimEnd();
+    blocks.push({ verse, content });
+  }
+
+  // Everything before the first anchor is "general notes"
+  const pre = lines.slice(0, anchorIdxs[0].i).join("\n").trimEnd();
+
+  // Sort by verse
+  blocks.sort((a, b) => a.verse - b.verse);
+
+  const sortedAnchors = blocks.map((b) => b.content).join("\n\n").trimEnd();
+
+  if (pre.trim()) return `${pre}\n\n${sortedAnchors}`.trimEnd();
+  return sortedAnchors;
+}
 
   function insertAnchor(verse: number) {
     if (chapter === "") return;
@@ -66,10 +107,10 @@ export default function Home() {
 
     const insertText = `${prefixNeedsBreak ? "\n\n" : ""}${anchor}`;
 
-    const next =
-      notes.slice(0, start) + insertText + notes.slice(end);
+    const nextRaw = notes.slice(0, start) + insertText + notes.slice(end);
+const nextSorted = sortAnchoredNotes(nextRaw, chapter);
+setNotes(nextSorted);
 
-    setNotes(next);
 
     // Focus and place cursor after the anchor text
     requestAnimationFrame(() => {
