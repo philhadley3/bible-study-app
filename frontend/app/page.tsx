@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BOOKS } from "../src/lib/bible";
 
 type ScriptureResponse = {
@@ -20,6 +20,8 @@ export default function Home() {
   const [error, setError] = useState<string>("");
 
   const notesKey = book && chapter !== "" ? `notes:${book}:${chapter}` : "";
+
+  const notesRef = useRef<HTMLTextAreaElement | null>(null);
 
   const chapterOptions = useMemo(() => {
     if (!book) return [];
@@ -42,6 +44,40 @@ export default function Home() {
     if (!notesKey) return;
     localStorage.setItem(notesKey, notes);
   }, [notesKey, notes]);
+
+  function insertAnchor(verse: number) {
+    if (chapter === "") return;
+
+    const anchor = `**${chapter}:${verse}** `;
+    const textarea = notesRef.current;
+
+    // If we can't access selection, just append cleanly.
+    if (!textarea) {
+      setNotes((prev) => (prev ? `${prev}\n\n${anchor}` : anchor));
+      return;
+    }
+
+    const start = textarea.selectionStart ?? notes.length;
+    const end = textarea.selectionEnd ?? notes.length;
+
+    // Ensure anchor starts on a new paragraph
+    const prefixNeedsBreak =
+      start > 0 && !notes.slice(0, start).endsWith("\n\n");
+
+    const insertText = `${prefixNeedsBreak ? "\n\n" : ""}${anchor}`;
+
+    const next =
+      notes.slice(0, start) + insertText + notes.slice(end);
+
+    setNotes(next);
+
+    // Focus and place cursor after the anchor text
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursorPos = start + insertText.length;
+      textarea.setSelectionRange(cursorPos, cursorPos);
+    });
+  }
 
   async function handleLoad() {
     setError("");
@@ -66,7 +102,7 @@ export default function Home() {
       setScripture(data);
 
       if (!data.verses?.length) {
-        setError("No verses returned for that selection yet.");
+        setError("No verses returned for this selection yet.");
       }
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
@@ -191,10 +227,15 @@ export default function Home() {
                     <div className="space-y-2">
                       {scripture.verses.map((x) => (
                         <p key={x.v} className="leading-relaxed text-slate-900">
-                          <span className="mr-2 text-sm font-semibold text-slate-500">
+                          <button
+                            type="button"
+                            onClick={() => insertAnchor(x.v)}
+                            className="mr-2 inline-flex w-10 shrink-0 items-center justify-end text-sm font-semibold text-slate-500 hover:text-slate-900"
+                            title={`Add note anchor ${chapter === "" ? "" : chapter}:${x.v}`}
+                          >
                             {x.v}
-                          </span>
-                          {x.t}
+                          </button>
+                          <span>{x.t}</span>
                         </p>
                       ))}
                     </div>
@@ -212,6 +253,7 @@ export default function Home() {
             </div>
 
             <textarea
+              ref={notesRef}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="flex-1 min-h-0 w-full resize-none rounded-xl border border-slate-300 bg-white p-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
