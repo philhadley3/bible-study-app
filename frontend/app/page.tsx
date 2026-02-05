@@ -12,7 +12,6 @@ type ScriptureResponse = {
 export default function Home() {
   const [book, setBook] = useState<string>("");
   const [chapter, setChapter] = useState<number | "">("");
-  const [activeVerse, setActiveVerse] = useState<number | null>(null);
 
   const [notes, setNotes] = useState<string>("");
 
@@ -20,8 +19,9 @@ export default function Home() {
   const [scripture, setScripture] = useState<ScriptureResponse | null>(null);
   const [error, setError] = useState<string>("");
 
-  const notesKey = book && chapter !== "" ? `notes:${book}:${chapter}` : "";
+  const [activeVerse, setActiveVerse] = useState<number | null>(null);
 
+  const notesKey = book && chapter !== "" ? `notes:${book}:${chapter}` : "";
   const notesRef = useRef<HTMLTextAreaElement | null>(null);
 
   const chapterOptions = useMemo(() => {
@@ -45,94 +45,131 @@ export default function Home() {
     if (!notesKey) return;
     localStorage.setItem(notesKey, notes);
   }, [notesKey, notes]);
-function sortAnchoredNotes(raw: string, ch: number) {
-  // Split into lines but keep original paragraphs
-  const text = raw ?? "";
-  if (!text.trim()) return text;
 
-  // Match anchors like "3:12", "3:12 —", "3:12:", "3:12 -"
-  const anchorRe = new RegExp(`^\\s*${ch}:(\\d{1,3})\\s*(?:[—\\-:]\\s*)?.*$`);
+  function sortAnchoredNotes(raw: string, ch: number) {
+    const text = raw ?? "";
+    if (!text.trim()) return text;
 
-  const lines = text.split("\n");
+    // Anchors like: "3:12", "3:12 —", "3:12:", "3:12 -"
+    const anchorRe = new RegExp(
+      `^\\s*${ch}:(\\d{1,3})\\s*(?:[—\\-:]\\s*)?.*$`
+    );
 
-  // Find anchor line indices
-  const anchorIdxs: { i: number; v: number }[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(anchorRe);
-    if (m) anchorIdxs.push({ i, v: Number(m[1]) });
+    const lines = text.split("\n");
+
+    const anchorIdxs: { i: number; v: number }[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(anchorRe);
+      if (m) anchorIdxs.push({ i, v: Number(m[1]) });
+    }
+
+    if (anchorIdxs.length === 0) return text;
+
+    const blocks: { verse: number; content: string }[] = [];
+    for (let k = 0; k < anchorIdxs.length; k++) {
+      const start = anchorIdxs[k].i;
+      const end = k + 1 < anchorIdxs.length ? anchorIdxs[k + 1].i : lines.length;
+      const verse = anchorIdxs[k].v;
+      const content = lines.slice(start, end).join("\n").trimEnd();
+      blocks.push({ verse, content });
+    }
+
+    // General notes before first anchor
+    const pre = lines.slice(0, anchorIdxs[0].i).join("\n").trimEnd();
+
+    blocks.sort((a, b) => a.verse - b.verse);
+
+    const sortedAnchors = blocks.map((b) => b.content).join("\n\n").trimEnd();
+
+    if (pre.trim()) return `${pre}\n\n${sortedAnchors}`.trimEnd();
+    return sortedAnchors;
   }
 
-  // If no anchors, nothing to sort
-  if (anchorIdxs.length === 0) return text;
+  function findAnchorIndex(text: string, ch: number, verse: number) {
+    // Find the start index of a line that begins with "3:12"
+    const target = `${ch}:${verse}`;
+    const re = new RegExp(`(^|\\n)\\s*${target}(\\s|$)`, "m");
+    const m = text.match(re);
+    if (!m) return -1;
 
-  // Build blocks: (anchor line + following lines until next anchor)
-  const blocks: { verse: number; content: string }[] = [];
-  for (let k = 0; k < anchorIdxs.length; k++) {
-    const start = anchorIdxs[k].i;
-    const end = k + 1 < anchorIdxs.length ? anchorIdxs[k + 1].i : lines.length;
-    const verse = anchorIdxs[k].v;
-    const content = lines.slice(start, end).join("\n").trimEnd();
-    blocks.push({ verse, content });
+    // m.index points to start of match; if it matched "\n", step forward one
+    const idx = m.index ?? -1;
+    if (idx < 0) return -1;
+
+    // If match begins with newline, anchor starts at idx + 1
+    if (text[idx] === "\n") return idx + 1;
+    return idx;
   }
 
-  // Everything before the first anchor is "general notes"
-  const pre = lines.slice(0, anchorIdxs[0].i).join("\n").trimEnd();
+  function jumpToAnchor(text: string, ch: number, verse: number) {
+    const textarea = notesRef.current;
+    if (!textarea) return;
 
-  // Sort by verse
-  blocks.sort((a, b) => a.verse - b.verse);
+    const target = `${ch}:${verse}`;
+    const anchorStart = findAnchorIndex(text, ch, verse);
 
-  const sortedAnchors = blocks.map((b) => b.content).join("\n\n").trimEnd();
+    // Put cursor just after "3:12 — " if present, else after "3:12"
+    let cursorPos = anchorStart >= 0 ? anchorStart + target.length : text.length;
 
-  if (pre.trim()) return `${pre}\n\n${sortedAnchors}`.trimEnd();
-  return sortedAnchors;
-}
+    if (anchorStart >= 0) {
+      // If the anchor line contains a separator, move cursor after it
+      const lineEnd = text.indexOf("\n", anchorStart);
+      const line = text.slice(anchorStart, lineEnd >= 0 ? lineEnd : undefined);
+      const sepMatch = line.match(new RegExp(`^\\s*${target}\\s*(?:[—\\-:]\\s*)?`));
+      if (sepMatch?.[0]) cursorPos = anchorStart + sepMatch[0].length;
+    }
 
-  function insertAnchor(verse: number) {
-    setActiveVerse(verse);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(cursorPos, cursorPos);
+
+      // Scroll so the cursor line is visible
+      const before = text.slice(0, cursorPos);
+      const lineCount = before.split("\n").length;
+
+      // Approx line height; textarea default ~20px
+      const lineHeight = 20;
+      textarea.scrollTop = Math.max(0, (lineCount - 3) * lineHeight);
+    });
+  }
+
+  function insertOrJumpAnchor(verse: number) {
     if (chapter === "") return;
 
-    const anchor = `${chapter}:${verse} –  `;
+    setActiveVerse(verse);
+
+    const ch = chapter;
+    const targetIdx = findAnchorIndex(notes, ch, verse);
+
+    // If anchor already exists, just jump to it (no duplicates)
+    if (targetIdx >= 0) {
+      jumpToAnchor(notes, ch, verse);
+      return;
+    }
+
+    const anchorLine = `${ch}:${verse} — `;
     const textarea = notesRef.current;
 
-    // If we can't access selection, just append cleanly.
+    // If no textarea selection available, append, sort, jump
     if (!textarea) {
-      setNotes((prev) => (prev ? `${prev}\n\n${anchor}` : anchor));
+      const nextRaw = notes ? `${notes}\n\n${anchorLine}` : anchorLine;
+      const nextSorted = sortAnchoredNotes(nextRaw, ch);
+      setNotes(nextSorted);
+      jumpToAnchor(nextSorted, ch, verse);
       return;
     }
 
     const start = textarea.selectionStart ?? notes.length;
     const end = textarea.selectionEnd ?? notes.length;
 
-    // Ensure anchor starts on a new paragraph
-    const prefixNeedsBreak =
-      start > 0 && !notes.slice(0, start).endsWith("\n\n");
-
-    const insertText = `${prefixNeedsBreak ? "\n\n" : ""}${anchor}`;
+    const prefixNeedsBreak = start > 0 && !notes.slice(0, start).endsWith("\n\n");
+    const insertText = `${prefixNeedsBreak ? "\n\n" : ""}${anchorLine}`;
 
     const nextRaw = notes.slice(0, start) + insertText + notes.slice(end);
-const nextSorted = sortAnchoredNotes(nextRaw, chapter);
-setNotes(nextSorted);
+    const nextSorted = sortAnchoredNotes(nextRaw, ch);
 
-
-    // Focus and place cursor after the anchor text
-    requestAnimationFrame(() => {
-      textarea.focus();
-      // After sorting, jump cursor to the anchor we just inserted
-      const target = `${chapter}:${verse}`;
-      const idx = nextSorted.indexOf(target);
-
-      const cursorPos = idx >= 0 ? idx + target.length + 3 : start + insertText.length; 
-      // +3 roughly places after " — " if present
-
-      textarea.setSelectionRange(cursorPos, cursorPos);
-
-      // Scroll the textarea so the cursor line is visible
-      const before = nextSorted.slice(0, cursorPos);
-      const lineCount = before.split("\n").length;
-      const lineHeight = 20; // approx; good enough for textarea scrolling
-      textarea.scrollTop = Math.max(0, (lineCount - 3) * lineHeight);
-    });
-
+    setNotes(nextSorted);
+    jumpToAnchor(nextSorted, ch, verse);
   }
 
   async function handleLoad() {
@@ -174,9 +211,7 @@ setNotes(nextSorted);
         <header className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h1 className="text-xl font-semibold text-slate-900">
-                Bible Study
-              </h1>
+              <h1 className="text-xl font-semibold text-slate-900">Bible Study</h1>
 
               <div className="flex w-full gap-2 sm:max-w-2xl">
                 <input
@@ -186,9 +221,7 @@ setNotes(nextSorted);
                 <button
                   className="rounded-xl bg-slate-900 px-4 py-2 text-white hover:bg-slate-800"
                   type="button"
-                  onClick={() => {
-                    setError("Search wiring comes next. For now use dropdowns.");
-                  }}
+                  onClick={() => setError("Search wiring comes next. For now use dropdowns.")}
                 >
                   Go
                 </button>
@@ -197,7 +230,6 @@ setNotes(nextSorted);
 
             {/* Dropdown row */}
             <div className="grid gap-2 sm:grid-cols-6">
-              {/* Book */}
               <select
                 value={book}
                 onChange={(e) => {
@@ -205,6 +237,7 @@ setNotes(nextSorted);
                   setChapter("");
                   setScripture(null);
                   setError("");
+                  setActiveVerse(null);
                 }}
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 sm:col-span-3"
               >
@@ -216,7 +249,6 @@ setNotes(nextSorted);
                 ))}
               </select>
 
-              {/* Chapter */}
               <select
                 value={chapter === "" ? "" : String(chapter)}
                 onChange={(e) => {
@@ -224,6 +256,7 @@ setNotes(nextSorted);
                   setChapter(v === "" ? "" : Number(v));
                   setScripture(null);
                   setError("");
+                  setActiveVerse(null);
                 }}
                 disabled={!book}
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 disabled:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 sm:col-span-2"
@@ -255,18 +288,14 @@ setNotes(nextSorted);
           {/* Left: Bible text */}
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Scripture
-              </h2>
-              <span className="text-sm text-slate-500">
-                {scripture?.translation ?? "—"}
-              </span>
+              <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
+              <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
             </div>
 
             {!scripture ? (
               <p className="text-slate-500">
-                Select a book and chapter, then press <strong>Load</strong>.
-                (Try <strong>John 3</strong> or <strong>Genesis 1</strong>.)
+                Select a book and chapter, then press <strong>Load</strong>. (Try{" "}
+                <strong>John 3</strong> or <strong>Genesis 1</strong>.)
               </p>
             ) : (
               <>
@@ -276,9 +305,7 @@ setNotes(nextSorted);
 
                 <div className="mt-3 flex-1 min-h-0 overflow-auto pr-2">
                   {scripture.verses.length === 0 ? (
-                    <p className="text-slate-500">
-                      No verses returned for this selection yet.
-                    </p>
+                    <p className="text-slate-500">No verses returned for this selection yet.</p>
                   ) : (
                     <div className="space-y-2">
                       {scripture.verses.map((x) => (
@@ -288,12 +315,11 @@ setNotes(nextSorted);
                             activeVerse === x.v ? "bg-slate-100 ring-1 ring-slate-200" : ""
                           }`}
                         >
-
                           <button
                             type="button"
-                            onClick={() => insertAnchor(x.v)}
+                            onClick={() => insertOrJumpAnchor(x.v)}
                             className="mr-2 inline-flex w-10 shrink-0 items-center justify-end text-sm font-semibold text-slate-500 hover:text-slate-900"
-                            title={`Add note anchor ${chapter === "" ? "" : chapter}:${x.v}`}
+                            title={`Add/jump note anchor ${chapter === "" ? "" : chapter}:${x.v}`}
                           >
                             {x.v}
                           </button>
