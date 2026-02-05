@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BOOKS } from "../src/lib/bible";
 
 type ScriptureResponse = {
@@ -10,6 +10,11 @@ type ScriptureResponse = {
 };
 
 export default function Home() {
+  const [notes, setNotes] = useState<string>("");
+
+  const notesKey =
+    book && chapter !== "" ? `notes:${book}:${chapter}` : "";
+
   const [book, setBook] = useState<string>("");
   const [chapter, setChapter] = useState<number | "">("");
 
@@ -22,6 +27,18 @@ export default function Home() {
     const chapters = BOOKS.find((b) => b.name === book)?.chapters ?? 0;
     return Array.from({ length: chapters }, (_, i) => i + 1);
   }, [book]);
+  useEffect(() => {
+  if (!notesKey) {
+    setNotes("");
+    return;
+  }
+  const saved = localStorage.getItem(notesKey);
+  setNotes(saved ?? "");
+}, [notesKey]);
+useEffect(() => {
+  if (!notesKey) return;
+  localStorage.setItem(notesKey, notes);
+}, [notesKey, notes]);
 
   async function handleLoad() {
     setError("");
@@ -192,9 +209,12 @@ export default function Home() {
             </div>
 
             <textarea
-              className="min-h-[420px] w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
-              placeholder="Write your study notes here…"
-            />
+  value={notes}
+  onChange={(e) => setNotes(e.target.value)}
+  className="min-h-[420px] w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+  placeholder="Write your study notes here…"
+/>
+
           </div>
         </section>
       </div>
