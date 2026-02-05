@@ -10,35 +10,38 @@ type ScriptureResponse = {
 };
 
 export default function Home() {
-  const [notes, setNotes] = useState<string>("");
-
-  const notesKey =
-    book && chapter !== "" ? `notes:${book}:${chapter}` : "";
-
   const [book, setBook] = useState<string>("");
   const [chapter, setChapter] = useState<number | "">("");
+
+  const [notes, setNotes] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [scripture, setScripture] = useState<ScriptureResponse | null>(null);
   const [error, setError] = useState<string>("");
+
+  const notesKey = book && chapter !== "" ? `notes:${book}:${chapter}` : "";
 
   const chapterOptions = useMemo(() => {
     if (!book) return [];
     const chapters = BOOKS.find((b) => b.name === book)?.chapters ?? 0;
     return Array.from({ length: chapters }, (_, i) => i + 1);
   }, [book]);
+
+  // Load notes when book/chapter changes
   useEffect(() => {
-  if (!notesKey) {
-    setNotes("");
-    return;
-  }
-  const saved = localStorage.getItem(notesKey);
-  setNotes(saved ?? "");
-}, [notesKey]);
-useEffect(() => {
-  if (!notesKey) return;
-  localStorage.setItem(notesKey, notes);
-}, [notesKey, notes]);
+    if (!notesKey) {
+      setNotes("");
+      return;
+    }
+    const saved = localStorage.getItem(notesKey);
+    setNotes(saved ?? "");
+  }, [notesKey]);
+
+  // Autosave notes as you type
+  useEffect(() => {
+    if (!notesKey) return;
+    localStorage.setItem(notesKey, notes);
+  }, [notesKey, notes]);
 
   async function handleLoad() {
     setError("");
@@ -50,12 +53,12 @@ useEffect(() => {
 
     try {
       setLoading(true);
-      const res = await fetch(
-  `${process.env.NEXT_PUBLIC_API_BASE_URL}/scripture?book=${encodeURIComponent(
-    book
-  )}&chapter=${encodeURIComponent(String(chapter))}`
-);
 
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/scripture?book=${encodeURIComponent(
+          book
+        )}&chapter=${encodeURIComponent(String(chapter))}`
+      );
 
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
@@ -63,7 +66,7 @@ useEffect(() => {
       setScripture(data);
 
       if (!data.verses?.length) {
-        setError("No mock text found for that selection yet (try John 3 or Genesis 1).");
+        setError("No verses returned for that selection yet.");
       }
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
@@ -92,7 +95,6 @@ useEffect(() => {
                   className="rounded-xl bg-slate-900 px-4 py-2 text-white hover:bg-slate-800"
                   type="button"
                   onClick={() => {
-                    // Search wiring later
                     setError("Search wiring comes next. For now use dropdowns.");
                   }}
                 >
@@ -152,69 +154,69 @@ useEffect(() => {
               </button>
             </div>
 
-            {error && (
-              <p className="text-sm text-red-600">
-                {error}
-              </p>
-            )}
+            {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
         </header>
 
         {/* Two-pane layout */}
-<section className="grid gap-6 lg:grid-cols-2 lg:h-[75vh]">
+        <section className="grid gap-6 lg:grid-cols-2 lg:h-[75vh]">
           {/* Left: Bible text */}
-<div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
-  <div className="mb-3 flex items-baseline justify-between">
-    <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
-    <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
-  </div>
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Scripture
+              </h2>
+              <span className="text-sm text-slate-500">
+                {scripture?.translation ?? "—"}
+              </span>
+            </div>
 
-  {!scripture ? (
-    <p className="text-slate-500">
-      Select a book and chapter, then press <strong>Load</strong>. (Try{" "}
-      <strong>John 3</strong> or <strong>Genesis 1</strong>.)
-    </p>
-  ) : (
-    <>
-      <p className="text-sm text-slate-600">
-        <strong>{scripture.reference}</strong>
-      </p>
-
-      <div className="mt-3 flex-1 min-h-0 overflow-auto pr-2">
-        {scripture.verses.length === 0 ? (
-          <p className="text-slate-500">No verses returned for this selection yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {scripture.verses.map((x) => (
-              <p key={x.v} className="leading-relaxed text-slate-900">
-                <span className="mr-2 text-sm font-semibold text-slate-500">
-                  {x.v}
-                </span>
-                {x.t}
+            {!scripture ? (
+              <p className="text-slate-500">
+                Select a book and chapter, then press <strong>Load</strong>.
+                (Try <strong>John 3</strong> or <strong>Genesis 1</strong>.)
               </p>
-            ))}
-          </div>
-        )}
-      </div>
-    </>
-  )}
-</div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">
+                  <strong>{scripture.reference}</strong>
+                </p>
 
+                <div className="mt-3 flex-1 min-h-0 overflow-auto pr-2">
+                  {scripture.verses.length === 0 ? (
+                    <p className="text-slate-500">
+                      No verses returned for this selection yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {scripture.verses.map((x) => (
+                        <p key={x.v} className="leading-relaxed text-slate-900">
+                          <span className="mr-2 text-sm font-semibold text-slate-500">
+                            {x.v}
+                          </span>
+                          {x.t}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Right: Notes */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Notes</h2>
-              <span className="text-sm text-slate-500">Autosave later</span>
+              <span className="text-sm text-slate-500">Autosave</span>
             </div>
 
             <textarea
-  value={notes}
-  onChange={(e) => setNotes(e.target.value)}
-  className="min-h-[420px] w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
-  placeholder="Write your study notes here…"
-/>
-
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="flex-1 min-h-0 w-full resize-none rounded-xl border border-slate-300 bg-white p-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              placeholder="Write your study notes here…"
+            />
           </div>
         </section>
       </div>
