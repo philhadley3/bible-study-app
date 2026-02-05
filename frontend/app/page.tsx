@@ -27,6 +27,7 @@ export default function Home() {
   const [error, setError] = useState<string>("");
 
   const [activeVerse, setActiveVerse] = useState<number | null>(null);
+  const [activeRange, setActiveRange] = useState<{ start: number; end: number } | null>(null);
 
   const [searchText, setSearchText] = useState<string>("");
 
@@ -359,9 +360,17 @@ export default function Home() {
 
     if (parsed.verseStart) {
       setActiveVerse(parsed.verseStart);
+
+    if (parsed.verseEnd && parsed.verseEnd >= parsed.verseStart) {
+      setActiveRange({ start: parsed.verseStart, end: parsed.verseEnd });
     } else {
-      setActiveVerse(null);
+      setActiveRange({ start: parsed.verseStart, end: parsed.verseStart });
     }
+  } else {
+    setActiveVerse(null);
+    setActiveRange(null);
+  }
+
   }
 
   return (
@@ -401,6 +410,7 @@ export default function Home() {
                   setScripture(null);
                   setError("");
                   setActiveVerse(null);
+                  setActiveRange(null);
                 }}
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 sm:col-span-3"
               >
@@ -420,6 +430,7 @@ export default function Home() {
                   setScripture(null);
                   setError("");
                   setActiveVerse(null);
+                  setActiveRange(null);
                 }}
                 disabled={!book}
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 disabled:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 sm:col-span-2"
@@ -477,7 +488,9 @@ export default function Home() {
                           key={x.v}
                           id={`verse-${x.v}`}
                           className={`leading-relaxed text-slate-900 rounded-lg px-2 py-1 -mx-2 ${
-                            activeVerse === x.v ? "bg-slate-100 ring-1 ring-slate-200" : ""
+                            activeRange && x.v >= activeRange.start && x.v <= activeRange.end
+                            ? "bg-slate-100 ring-1 ring-slate-200"
+                            : ""
                           }`}
                         >
                           <button
