@@ -12,6 +12,7 @@ type ScriptureResponse = {
 export default function Home() {
   const [book, setBook] = useState<string>("");
   const [chapter, setChapter] = useState<number | "">("");
+  const [activeVerse, setActiveVerse] = useState<number | null>(null);
 
   const [notes, setNotes] = useState<string>("");
 
@@ -87,6 +88,7 @@ function sortAnchoredNotes(raw: string, ch: number) {
 }
 
   function insertAnchor(verse: number) {
+    setActiveVerse(verse);
     if (chapter === "") return;
 
     const anchor = `${chapter}:${verse} –  `;
@@ -267,7 +269,13 @@ setNotes(nextSorted);
                   ) : (
                     <div className="space-y-2">
                       {scripture.verses.map((x) => (
-                        <p key={x.v} className="leading-relaxed text-slate-900">
+                        <p
+                          key={x.v}
+                          className={`leading-relaxed text-slate-900 rounded-lg px-2 py-1 -mx-2 ${
+                            activeVerse === x.v ? "bg-slate-100 ring-1 ring-slate-200" : ""
+                          }`}
+                        >
+
                           <button
                             type="button"
                             onClick={() => insertAnchor(x.v)}
