@@ -117,9 +117,22 @@ setNotes(nextSorted);
     // Focus and place cursor after the anchor text
     requestAnimationFrame(() => {
       textarea.focus();
-      const cursorPos = start + insertText.length;
+      // After sorting, jump cursor to the anchor we just inserted
+      const target = `${chapter}:${verse}`;
+      const idx = nextSorted.indexOf(target);
+
+      const cursorPos = idx >= 0 ? idx + target.length + 3 : start + insertText.length; 
+      // +3 roughly places after " — " if present
+
       textarea.setSelectionRange(cursorPos, cursorPos);
+
+      // Scroll the textarea so the cursor line is visible
+      const before = nextSorted.slice(0, cursorPos);
+      const lineCount = before.split("\n").length;
+      const lineHeight = 20; // approx; good enough for textarea scrolling
+      textarea.scrollTop = Math.max(0, (lineCount - 3) * lineHeight);
     });
+
   }
 
   async function handleLoad() {
