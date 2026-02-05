@@ -144,48 +144,45 @@ export default function Home() {
         </header>
 
         {/* Two-pane layout */}
-        <section className="grid gap-6 lg:grid-cols-2">
+<section className="grid gap-6 lg:grid-cols-2 lg:h-[75vh]">
           {/* Left: Bible text */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Scripture
-              </h2>
-              <span className="text-sm text-slate-500">
-                {scripture?.translation ?? "—"}
-              </span>
-            </div>
+<div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
+  <div className="mb-3 flex items-baseline justify-between">
+    <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
+    <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
+  </div>
 
-            {!scripture ? (
-              <p className="text-slate-500">
-                Select a book and chapter, then press <strong>Load</strong>.
-                (Try <strong>John 3</strong> or <strong>Genesis 1</strong>.)
+  {!scripture ? (
+    <p className="text-slate-500">
+      Select a book and chapter, then press <strong>Load</strong>. (Try{" "}
+      <strong>John 3</strong> or <strong>Genesis 1</strong>.)
+    </p>
+  ) : (
+    <>
+      <p className="text-sm text-slate-600">
+        <strong>{scripture.reference}</strong>
+      </p>
+
+      <div className="mt-3 flex-1 min-h-0 overflow-auto pr-2">
+        {scripture.verses.length === 0 ? (
+          <p className="text-slate-500">No verses returned for this selection yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {scripture.verses.map((x) => (
+              <p key={x.v} className="leading-relaxed text-slate-900">
+                <span className="mr-2 text-sm font-semibold text-slate-500">
+                  {x.v}
+                </span>
+                {x.t}
               </p>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-600">
-                  <strong>{scripture.reference}</strong>
-                </p>
-
-                {scripture.verses.length === 0 ? (
-                  <p className="text-slate-500">
-                    No verses returned for this selection yet.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {scripture.verses.map((x) => (
-                      <p key={x.v} className="leading-relaxed text-slate-900">
-                        <span className="mr-2 text-sm font-semibold text-slate-500">
-                          {x.v}
-                        </span>
-                        {x.t}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            ))}
           </div>
+        )}
+      </div>
+    </>
+  )}
+</div>
+
 
           {/* Right: Notes */}
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
