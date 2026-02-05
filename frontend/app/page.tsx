@@ -48,7 +48,7 @@ export default function Home() {
   function insertAnchor(verse: number) {
     if (chapter === "") return;
 
-    const anchor = `**${chapter}:${verse}** `;
+    const anchor = `${chapter}:${verse} –  `;
     const textarea = notesRef.current;
 
     // If we can't access selection, just append cleanly.
