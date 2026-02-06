@@ -480,12 +480,9 @@ export default function Home() {
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
-<div className="mb-3 flex items-baseline justify-between">
-  <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
-  <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
-</div>
-
+              <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
             </div>
+          </div>
 
             {!scripture ? (
               <p className="text-slate-500">
