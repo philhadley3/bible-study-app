@@ -480,16 +480,11 @@ export default function Home() {
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
-<div className="flex items-center gap-3">
-  <span className="text-sm text-slate-500">Autosave</span>
-  <button
-    type="button"
-    onClick={copyNotes}
-    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 hover:bg-slate-50"
-  >
-    Copy Notes
-  </button>
+<div className="mb-3 flex items-baseline justify-between">
+  <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
+  <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
 </div>
+
             </div>
 
             {!scripture ? (
@@ -541,9 +536,20 @@ export default function Home() {
 
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Notes</h2>
-              <span className="text-sm text-slate-500">Autosave</span>
-            </div>
+  <h2 className="text-lg font-semibold text-slate-900">Notes</h2>
+
+  <div className="flex items-center gap-3">
+    <span className="text-sm text-slate-500">Autosave</span>
+    <button
+      type="button"
+      onClick={copyNotes}
+      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 hover:bg-slate-50"
+    >
+      Copy Notes
+    </button>
+  </div>
+</div>
+
 
             <textarea
               ref={notesRef}
