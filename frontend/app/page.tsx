@@ -477,86 +477,95 @@ export default function Home() {
         </header>
 
         <section className="grid gap-6 lg:grid-cols-2 lg:h-[75vh]">
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
-              <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
-            </div>
-          </div>
+  {/* Left: Scripture */}
+  <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
+    <div className="mb-3 flex items-baseline justify-between">
+      <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
+      <span className="text-sm text-slate-500">
+        {scripture?.translation ?? "—"}
+      </span>
+    </div>
 
-            {!scripture ? (
-              <p className="text-slate-500">
-                Select a book and chapter, then press <strong>Load</strong>. Or use search
-                above (e.g., <strong>Jn 3:16</strong>).
-              </p>
-            ) : (
-              <>
-                <p className="text-sm text-slate-600">
-                  <strong>{scripture.reference}</strong>
-                </p>
+    {!scripture ? (
+      <p className="text-slate-500">
+        Select a book and chapter, then press <strong>Load</strong>. Or use
+        search above (e.g., <strong>Jn 3:16</strong>).
+      </p>
+    ) : (
+      <>
+        <p className="text-sm text-slate-600">
+          <strong>{scripture.reference}</strong>
+        </p>
 
-                <div
-                  ref={scriptureScrollRef}
-                  className="mt-3 flex-1 min-h-0 overflow-auto pr-2"
+        <div
+          ref={scriptureScrollRef}
+          className="mt-3 flex-1 min-h-0 overflow-auto pr-2"
+        >
+          {scripture.verses.length === 0 ? (
+            <p className="text-slate-500">
+              No verses returned for this selection yet.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {scripture.verses.map((x) => (
+                <p
+                  key={x.v}
+                  id={`verse-${x.v}`}
+                  className={`leading-relaxed text-slate-900 rounded-lg px-2 py-1 -mx-2 ${
+                    activeRange &&
+                    x.v >= activeRange.start &&
+                    x.v <= activeRange.end
+                      ? "bg-slate-100 ring-1 ring-slate-200"
+                      : ""
+                  }`}
                 >
-                  {scripture.verses.length === 0 ? (
-                    <p className="text-slate-500">No verses returned for this selection yet.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {scripture.verses.map((x) => (
-                        <p
-                          key={x.v}
-                          id={`verse-${x.v}`}
-                          className={`leading-relaxed text-slate-900 rounded-lg px-2 py-1 -mx-2 ${
-                            activeRange && x.v >= activeRange.start && x.v <= activeRange.end
-                            ? "bg-slate-100 ring-1 ring-slate-200"
-                            : ""
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => insertOrJumpAnchor(x.v)}
-                            className="mr-2 inline-flex w-10 shrink-0 items-center justify-end text-sm font-semibold text-slate-500 hover:text-slate-900"
-                            title={`Add/jump note anchor ${chapter === "" ? "" : chapter}:${x.v}`}
-                          >
-                            {x.v}
-                          </button>
-                          <span>{x.t}</span>
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
-            <div className="mb-3 flex items-baseline justify-between">
-  <h2 className="text-lg font-semibold text-slate-900">Notes</h2>
-
-  <div className="flex items-center gap-3">
-    <span className="text-sm text-slate-500">Autosave</span>
-    <button
-      type="button"
-      onClick={copyNotes}
-      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 hover:bg-slate-50"
-    >
-      Copy Notes
-    </button>
+                  <button
+                    type="button"
+                    onClick={() => insertOrJumpAnchor(x.v)}
+                    className="mr-2 inline-flex w-10 shrink-0 items-center justify-end text-sm font-semibold text-slate-500 hover:text-slate-900"
+                    title={`Add/jump note anchor ${
+                      chapter === "" ? "" : chapter
+                    }:${x.v}`}
+                  >
+                    {x.v}
+                  </button>
+                  <span>{x.t}</span>
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </>
+    )}
   </div>
-</div>
 
+  {/* Right: Notes */}
+  <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
+    <div className="mb-3 flex items-baseline justify-between">
+      <h2 className="text-lg font-semibold text-slate-900">Notes</h2>
 
-            <textarea
-              ref={notesRef}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="flex-1 min-h-0 w-full resize-none rounded-xl border border-slate-300 bg-white p-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
-              placeholder="Write your study notes here…"
-            />
-          </div>
-        </section>
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-slate-500">Autosave</span>
+        <button
+          type="button"
+          onClick={copyNotes}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 hover:bg-slate-50"
+        >
+          Copy Notes
+        </button>
+      </div>
+    </div>
+
+    <textarea
+      ref={notesRef}
+      value={notes}
+      onChange={(e) => setNotes(e.target.value)}
+      className="flex-1 min-h-0 w-full resize-none rounded-xl border border-slate-300 bg-white p-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+      placeholder="Write your study notes here…"
+    />
+  </div>
+</section>
+
       </div>
     </main>
   );
