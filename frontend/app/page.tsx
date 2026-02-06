@@ -144,6 +144,25 @@ export default function Home() {
 
     return map;
   }, []);
+  
+  async function copyNotes() {
+    if (!book || chapter === "") {
+      setError("Pick a book and chapter first.");
+      return;
+    }
+
+  const header = `${book} ${chapter}\n\n`;
+  const body = notes?.trim() ? notes.trim() : "(no notes)";
+  const text = header + body;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    setError(""); // clear any old error
+    alert("Notes copied to clipboard.");
+  } catch {
+    setError("Could not copy to clipboard (browser blocked).");
+  }
+}
 
   function parseReference(input: string): ParsedRef | null {
     // Normalize dashes and whitespace
@@ -461,7 +480,16 @@ export default function Home() {
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col h-full min-h-0">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Scripture</h2>
-              <span className="text-sm text-slate-500">{scripture?.translation ?? "—"}</span>
+<div className="flex items-center gap-3">
+  <span className="text-sm text-slate-500">Autosave</span>
+  <button
+    type="button"
+    onClick={copyNotes}
+    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 hover:bg-slate-50"
+  >
+    Copy Notes
+  </button>
+</div>
             </div>
 
             {!scripture ? (
