@@ -163,6 +163,31 @@ export default function Home() {
     setError("Could not copy to clipboard (browser blocked).");
   }
 }
+function downloadNotes() {
+  if (!book || chapter === "") {
+    setError("Pick a book and chapter first.");
+    return;
+  }
+
+  const header = `${book} ${chapter}\n\n`;
+  const body = notes?.trim() ? notes.trim() : "(no notes)";
+  const text = header + body;
+
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+
+  const safeBook = book.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
+  a.download = `${safeBook}_${chapter}_notes.txt`;
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
+}
 
   function parseReference(input: string): ParsedRef | null {
     // Normalize dashes and whitespace
@@ -553,6 +578,13 @@ export default function Home() {
         >
           Copy Notes
         </button>
+        <button
+  type="button"
+  onClick={downloadNotes}
+  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 hover:bg-slate-50"
+>
+  Download
+</button>
       </div>
     </div>
 
