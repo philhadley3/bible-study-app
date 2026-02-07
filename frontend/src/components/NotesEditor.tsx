@@ -94,7 +94,7 @@ export default function NotesEditor({
     if (!editor) return;
     const current = editor.getHTML();
     if ((value || "") !== current) {
-      editor.commands.setContent(value || "", false);
+      editor.commands.setContent(value || "", { emitUpdate: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
