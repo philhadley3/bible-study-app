@@ -3,16 +3,7 @@
 import React, { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Mention from "@tiptap/extension-mention";
-import { Extension } from "@tiptap/core";
-
-/**
- * NotesEditor
- * - Stores content as HTML string
- * - Anchors are inserted as non-editable "mention" tokens: @3:12
- * - Tokens are bold + pill-styled and cannot be edited inline
- * - Backspace behavior: you can delete the whole token, but you cannot "backspace through" it character-by-character
- */
+import { Node } from "@tiptap/core";
 
 type Anchor = {
   chapter: number;
@@ -23,32 +14,58 @@ type Props = {
   value: string; // HTML
   onChange: (nextHtml: string) => void;
 
-  // Called when user clicks a verse in scripture pane
+  // When user clicks a verse in scripture pane
   pendingAnchor?: Anchor | null;
 
   placeholder?: string;
 };
 
-const NoSpillBackspace = Extension.create({
-  name: "noSpillBackspace",
-  addKeyboardShortcuts() {
-    return {
-      Backspace: () => false,
-      Delete: () => false,
-    };
-  },
-});
-
-/**
- * We don't want to disable backspace/delete globally.
- * So instead of using NoSpillBackspace, we rely on Mention's atom behavior:
- * It's a single node; users can't delete inside it. They can delete it as a unit.
- * That solves "backspace through the anchor" while keeping normal editing.
- */
-
 function anchorId(chapter: number, verse: number) {
   return `${chapter}:${verse}`;
 }
+
+/**
+ * Inline atom node that renders as bold "3:12 –"
+ * - atomic: cannot edit inside
+ * - deleting removes the whole node
+ */
+const AnchorNode = Node.create({
+  name: "anchor",
+
+  inline: true,
+  group: "inline",
+
+  atom: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      id: { default: "" }, // e.g. "3:12"
+      label: { default: "" }, // e.g. "3:12 –"
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-anchor="true"]',
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "span",
+      {
+        ...HTMLAttributes,
+        "data-anchor": "true",
+        "data-anchor-id": HTMLAttributes.id,
+        class: "afl-anchor",
+      },
+      HTMLAttributes.label,
+    ];
+  },
+});
 
 export default function NotesEditor({
   value,
@@ -59,22 +76,12 @@ export default function NotesEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // keep things simple and stable for now
         heading: false,
         blockquote: false,
         codeBlock: false,
         horizontalRule: false,
       }),
-
-      Mention.configure({
-        HTMLAttributes: {
-          class: "afl-anchor",
-        },
-        renderLabel({ node }) {
-          // Display without @
-          return `${node.attrs.label ?? node.attrs.id}`;
-        },
-      }),
+      AnchorNode,
     ],
     content: value || "",
     editorProps: {
@@ -99,37 +106,34 @@ export default function NotesEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
-  // Insert pending anchor as a non-editable token
+  // Insert pending anchor as a single atomic node: "3:12 –"
   useEffect(() => {
     if (!editor) return;
     if (!pendingAnchor) return;
 
     const id = anchorId(pendingAnchor.chapter, pendingAnchor.verse);
+    const label = `${id} –`;
 
-    // Check if anchor already exists (by id)
+    // Prevent duplicates: look for data-anchor-id="3:12"
     const html = editor.getHTML();
-    if (html.includes(`data-id="${id}"`) || html.includes(`>${id}<`)) {
-      return;
-    }
+    if (html.includes(`data-anchor-id="${id}"`)) return;
 
-    editor.chain().focus()
-      // new paragraph before token
+    editor
+      .chain()
+      .focus()
+      // Start on a new paragraph line for cleanliness
       .insertContent("<p></p>")
       .insertContent({
-        type: "mention",
-        attrs: {
-          id,
-          label: id,
-        },
+        type: "anchor",
+        attrs: { id, label },
       })
-      // add separator + space after anchor token
-      .insertContent(" — ")
+      // Space after the anchor so typing feels natural
+      .insertContent(" ")
       .run();
   }, [pendingAnchor, editor]);
 
   return (
     <div className="h-full min-h-0 flex flex-col">
-      {/* Anchor styles + placeholder */}
       <style jsx global>{`
         .ProseMirror:focus {
           outline: none;
@@ -137,18 +141,14 @@ export default function NotesEditor({
         .ProseMirror p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           float: left;
-          color: rgba(100, 116, 139, 0.9); /* slate-500-ish */
+          color: rgba(100, 116, 139, 0.9);
           pointer-events: none;
           height: 0;
         }
+
+        /* Anchor styling: bold, professional, NOT a bubble */
         .afl-anchor {
-          display: inline-flex;
-          align-items: center;
           font-weight: 700;
-          padding: 0.1rem 0.45rem;
-          border-radius: 9999px;
-          border: 1px solid rgba(148, 163, 184, 0.9); /* slate-400 */
-          background: rgba(241, 245, 249, 1); /* slate-100 */
           color: rgba(15, 23, 42, 1); /* slate-900 */
           user-select: none;
           white-space: nowrap;
