@@ -147,7 +147,8 @@ export default function NotesEditor({
       }
 
       const anchorBlock = content[i];
-      const id = anchorBlock.content?.[0]?.attrs?.id ?? "";
+      const firstInline = (anchorBlock as any)?.content?.[0];
+      const id = (firstInline as any)?.attrs?.id ?? "";
       const verse = verseFromId(String(id));
 
       const blocks: any[] = [anchorBlock];
